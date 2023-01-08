@@ -103,11 +103,11 @@ def add_text(text: str, x: float, y: float, angle: float = 0, font_size: float =
     iDocument2D.ksEndObj()
 
 
-def m_to_mm(m: Tuple[float, ...]) -> Tuple[float, ...]:
+def m_to_mm(m: Tuple[float, ...]) -> Tuple[float, ...] | Tuple[float, float]:
     return tuple(map(lambda i: i * 1000, m))
 
 
-def mm_to_m(m: Tuple[float, ...]) -> Tuple[float, ...]:
+def mm_to_m(m: Tuple[float, ...]) -> Tuple[float, ...] | Tuple[float, float]:
     return tuple(map(lambda i: i / 1000, m))
 
 
@@ -234,6 +234,10 @@ def line_len(p1: Tuple[float, float], p2: Tuple[float, float]) -> float:
     return sum(map(lambda fp, sp: (sp - fp) ** 2, p1, p2)) ** 0.5
 
 
+def sum_tuple(t1: Tuple[float, float] | List[float], t2: Tuple[float, float]) -> Tuple[float, float]:
+    return t1[0] + t2[0], t1[1] + t2[1]
+
+
 ONE_TO_SCALE = 2000
 
 
@@ -301,7 +305,7 @@ def main() -> None:
                                                                                                             ",") + ")",
                 xx * 1000 + 2000, yy * 1000 - 1000)
 
-            obj = iDocument2D.ksCircle(xx * 1000, yy * 1000, 1000, 1)
+            iDocument2D.ksCircle(xx * 1000, yy * 1000, 1000, 1)
             extra_points.update({str(row["№№"]): [xx, yy, row["Отметки реечн. точек Hр.т., м"]]})
 
         interpolated_points = {}
@@ -328,16 +332,15 @@ def main() -> None:
 
             _alpha = np.rad2deg(get_angle_between_points(center_point[0], center_point[1], point[0], point[1]))
 
-            x = [0, length]
             f = interpolate.interp1d(xia, yia)
 
             for i in height_dif:
                 _d = f(i)
-                _interpolated_point = endpoint_by_distance_and_angle(m_to_mm(center_point), _d * 1000, _alpha)
+                _interpolated_point = endpoint_by_distance_and_angle(m_to_mm(tuple(center_point)), _d * 1000, _alpha)
                 # xx = center_point[0] * 1000 + (_d * 1000 * cos(np.radians(_alpha)))
                 # yy = center_point[1] * 1000 + (_d * 1000 * sin(np.radians(_alpha)))
                 iDocument2D.ksPoint(*_interpolated_point, 0)
-                add_text(i, _interpolated_point[0] - 10000, _interpolated_point[1] - 8000, color=9410565)
+                add_text(str(i), _interpolated_point[0] - 10000, _interpolated_point[1] - 8000, color=9410565)
 
                 if i in interpolated_points:
                     interpolated_points[i].append(_interpolated_point)
@@ -535,8 +538,9 @@ def main() -> None:
         _river_border = "4,2,21,20".split(sep=",")
 
         for i in range(len(_river_border) - 1):
-            # print(f"{ _river_border[i]}: {extra_points[ _river_border[i]]}\t{ _river_border[i+1]}: {extra_points[ _river_border[i+1]]}")
-            obj = iDocument2D.ksLineSeg(
+            # print(f"{ _river_border[i]}: {extra_points[ _river_border[i]]}\t"
+            #       f"{ _river_border[i+1]}: {extra_points[ _river_border[i+1]]}")
+            iDocument2D.ksLineSeg(
                 *[i * 1000 for i in (*extra_points[_river_border[i]][:2], *extra_points[_river_border[i + 1]][:2])], 1)
 
         # вторая сторона реки
@@ -546,17 +550,15 @@ def main() -> None:
         _second_shore = []
         _d = 32
         for i in range(len(_river_border)):
-            # obj = iDocument2D.ksLineSeg(*[i * 1000 for i in tuple(map(lambda i, j: i - j, (*extra_points[ _river_border[i]][:2], *extra_points[ _river_border[i+1]][:2]), (20,20,20,20)))], 1)
-
             xx = extra_points[_river_border[i]][0] * 1000 + (_d * 1000 * cos(np.radians(_alpha)))
             yy = extra_points[_river_border[i]][1] * 1000 + (_d * 1000 * sin(np.radians(_alpha)))
             _second_shore.append((xx, yy))
 
         for i in range(len(_second_shore) - 1):
             if i != len(_second_shore) - 2:
-                obj = iDocument2D.ksLineSeg(*_second_shore[i], *_second_shore[i + 1], 1)
+                iDocument2D.ksLineSeg(*_second_shore[i], *_second_shore[i + 1], 1)
             else:
-                obj = iDocument2D.ksLineSeg(*_second_shore[i], *(p * 1000 for p in extra_points["19"][:2]), 1)
+                iDocument2D.ksLineSeg(*_second_shore[i], *(p * 1000 for p in extra_points["19"][:2]), 1)
 
         # Добавить подпись
 
@@ -590,12 +592,12 @@ def main() -> None:
         # Текст пашни
         add_layer(15, 3, "Текст пашни")
 
-        add_text("Пашня", *map(lambda i, j: (i + j) * 1000, extra_points["111"][:2], (-20, 45)), 0, 7)
+        add_text("Пашня", *m_to_mm(sum_tuple(extra_points["111"][:2], (-20, 45))), 0, 7)
         # %%
         # Текст лес
         add_layer(16, 3, "Текст лес")
 
-        add_text("Лес", *map(lambda i, j: (i + j) * 1000, extra_points["6"][:2], (-60, 0)), 0, 7)
+        add_text("Лес", *m_to_mm(sum_tuple(extra_points["6"][:2], (-60, 0))), 0, 7)
 
         # %%
 
