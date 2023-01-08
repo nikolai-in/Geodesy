@@ -103,7 +103,7 @@ def add_text(text: str, x: float, y: float, angle: float = 0, font_size: float =
     iDocument2D.ksEndObj()
 
 
-def m_to_mm(m: Tuple[float, ...]) -> Tuple[float, ...] | Tuple[float, float]:
+def m_to_mm(m: Tuple[float, ...] | List[float]) -> Tuple[float, ...] | Tuple[float, float]:
     return tuple(map(lambda i: i * 1000, m))
 
 
@@ -575,9 +575,8 @@ def main() -> None:
         _second_shore = []
         _d = 32
         for i in range(len(_river_border)):
-            xx = extra_points[_river_border[i]][0] * 1000 + (_d * 1000 * cos(np.radians(_alpha)))
-            yy = extra_points[_river_border[i]][1] * 1000 + (_d * 1000 * sin(np.radians(_alpha)))
-            _second_shore.append((xx, yy))
+            _second_shore.append(endpoint_by_distance_and_angle(
+                m_to_mm(extra_points[_river_border[i]][:2]), _d * 1000, _alpha))
 
         for i in range(len(_second_shore) - 1):
             if i != len(_second_shore) - 2:
