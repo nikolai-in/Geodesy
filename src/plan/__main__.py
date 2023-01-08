@@ -230,12 +230,36 @@ def draw_meadow(point: Tuple[float, float], style: int = 2, size: float = 1000) 
     return line_one, line_two
 
 
-def line_len(p1: Tuple[float, float], p2: Tuple[float, float]) -> float:
+def line_len(p1: Tuple[float, float] | List[float], p2: Tuple[float, float] | List[float]) -> float:
     return sum(map(lambda fp, sp: (sp - fp) ** 2, p1, p2)) ** 0.5
 
 
 def sum_tuple(t1: Tuple[float, float] | List[float], t2: Tuple[float, float]) -> Tuple[float, float]:
     return t1[0] + t2[0], t1[1] + t2[1]
+
+
+def add_raster(path: str, point: Tuple[float, float], scale: float = 1, angle: float = 0, embed: bool = True) -> None:
+    """Добавляет растровое изображение в чертеж.
+
+    :param path: Путь к файлу.
+    :param point: Точка вставки (1 равняется кратности вида).
+    :param scale: Масштаб вставки.
+    :param angle: Угол поворота вставки.
+    :param embed: Встраивать или нет.
+    """
+    iRasterParam = kompas6_api5_module.ksRasterParam(kompas_object.GetParamStruct(kompas6_constants.ko_RasterParam))
+    iRasterParam.Init()
+    iRasterParam.embeded = embed
+    iRasterParam.fileName = str(Path(path).absolute())
+    iPlacementParam = kompas6_api5_module.ksPlacementParam(
+        kompas_object.GetParamStruct(kompas6_constants.ko_PlacementParam))
+    iPlacementParam.Init()
+    iPlacementParam.angle = angle
+    iPlacementParam.scale_ = scale
+    iPlacementParam.xBase = point[0]
+    iPlacementParam.yBase = point[1]
+    iRasterParam.SetPlace(iPlacementParam)
+    iDocument2D.ksInsertRaster(iRasterParam)
 
 
 ONE_TO_SCALE = 2000
@@ -247,7 +271,7 @@ def main() -> None:
         ws = wb.sheets["Варианты"]
 
         for _letter in ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I']:
-            ws[f"{_letter}{3}"].value = ws[f"{_letter}{_variant}"].value
+            ws[f"{_letter}{3}"].value = ws[f"{_letter}{4 + _variant}"].value
 
         wb.save()
         wb.close()
@@ -311,6 +335,7 @@ def main() -> None:
         interpolated_points = {}
 
         add_layer(3, 2, "Точки интерполяции пашни")
+        # todo: переделать эту часть кода
 
         con_111 = "5,6,7,8,9,112,ПЗ41".split(",")
 
@@ -618,7 +643,8 @@ def main() -> None:
         _well_point_2 = m_to_mm(endpoint_by_distance_and_angle(extra_points["113"][:2], 58.61, _alpha_113_P42))
         # _obj_well_point_2 = iDocument2D.ksPoint(*_well_point_2, 0)
         #
-        # well_line_1 = iDocument2D.ksLineSeg(*_well_point_1, *m_to_mm(endpoint_by_distance_and_angle(mm_to_m(_well_point_1), 9.15, _alpha_113_P42 - _well_angles)), 6)
+        # well_line_1 = iDocument2D.ksLineSeg(*_well_point_1, *m_to_mm(endpoint_by_distance_and_angle(mm_to_m(
+        # _well_point_1), 9.15, _alpha_113_P42 - _well_angles)), 6)
 
         _well_point_3 = get_intersections(*_well_point_1, 9.15 * 1000, *_well_point_2, 14.62 * 1000)
 
@@ -629,11 +655,15 @@ def main() -> None:
 
         _obj_well_circle = iDocument2D.ksCircle(*_well_point_3[:2], 2500, 1)
 
-        add_text("Колодец", *map(lambda i, j: (i + j) * 1000, mm_to_m(_well_point_3[:2]), (-10, 5)))
+        add_text("Колодец", *m_to_mm(sum_tuple(mm_to_m(_well_point_3[:2]), (-10, 5))))
 
         add_layer(18, 3, "Фруктовый сад")
 
-        # fruit_garden_points = [endpoint_by_distance_and_angle(extra_points["113"][:2], 81.5, _alpha_113_P42 - (44 + (1/60))), endpoint_by_distance_and_angle(endpoint_by_distance_and_angle(extra_points["113"][:2], 58.61, _alpha_113_P42), -8.2, _alpha_14_15), endpoint_by_distance_and_angle(endpoint_by_distance_and_angle(extra_points["113"][:2], 133.41, _alpha_113_P42), -7.81, _alpha_14_15), endpoint_by_distance_and_angle(extra_points["ПЗ42"][:2], 96.15, 0 - _alpha_113_P42 - (25 + (11/60)))]
+        # fruit_garden_points = [endpoint_by_distance_and_angle(extra_points["113"][:2], 81.5, _alpha_113_P42 - (44 +
+        # (1/60))), endpoint_by_distance_and_angle(endpoint_by_distance_and_angle(extra_points["113"][:2], 58.61,
+        # _alpha_113_P42), -8.2, _alpha_14_15), endpoint_by_distance_and_angle(endpoint_by_distance_and_angle(
+        # extra_points["113"][:2], 133.41, _alpha_113_P42), -7.81, _alpha_14_15), endpoint_by_distance_and_angle(
+        # extra_points["ПЗ42"][:2], 96.15, 0 - _alpha_113_P42 - (25 + (11/60)))]
 
         fruit_garden_points = [tuple(extra_points["17"][:2]), endpoint_by_distance_and_angle(
             endpoint_by_distance_and_angle(extra_points["113"][:2], 58.61, _alpha_113_P42), -8.2, _alpha_14_15),
@@ -646,8 +676,9 @@ def main() -> None:
         for i in range(len(fruit_garden_points) - 1):
             iDocument2D.ksLineSeg(*m_to_mm(fruit_garden_points[i]), *m_to_mm(fruit_garden_points[i + 1]), 1)
 
-        # _mid_fs_text = tuple(i/2 for i in (fruit_garden_points[0][0] + fruit_garden_points[1][0], fruit_garden_points[0][1] + fruit_garden_points[1][1]))
-        # *map(lambda i, j: (i + j) * 1000, _mid_fs_text, (-60, 0))
+        # _mid_fs_text = tuple(i/2 for i in (fruit_garden_points[0][0] + fruit_garden_points[1][0],
+        # fruit_garden_points[0][1] + fruit_garden_points[1][1])) *map(lambda i, j: (i + j) * 1000, _mid_fs_text,
+        # (-60, 0))
 
         _alpha_fs = np.rad2deg(get_angle_between_points(*fruit_garden_points[1], *fruit_garden_points[2]))
 
@@ -782,28 +813,9 @@ def main() -> None:
 
         _tree_point = iDocument2D.ksPoint(*m_to_mm(_tree), 0)
 
-        iRasterParam = kompas6_api5_module.ksRasterParam(kompas_object.GetParamStruct(kompas6_constants.ko_RasterParam))
-        iRasterParam.Init()
-        iRasterParam.embeded = True
-        iRasterParam.fileName = str(Path('../draw-plan/tree-64x64.png').absolute())
-        iPlacementParam = kompas6_api5_module.ksPlacementParam(
-            kompas_object.GetParamStruct(kompas6_constants.ko_PlacementParam))
-        iPlacementParam.Init()
-        iPlacementParam.angle = 0
-        iPlacementParam.scale_ = 0.025
+        add_raster('tree-64x64.png', (_tree[0] / 2 - 1.847273, _tree[1] / 2), 0.025)
 
-        # _img_cords = tuple(map(lambda i: i * 1, iDocument2D.ksViewToSheet(*m_to_mm(_tree))[1:]))
 
-        _plan = kompas_document_2d.ViewsAndLayersManager.Views.ActiveView
-
-        # _system_view = kompas_document_2d.ViewsAndLayersManager.Views.ViewByNumber(0)
-        # _system_view.Current = True
-        # _system_view.Update()
-
-        iPlacementParam.xBase = _tree[0] / 2 - 1.847273
-        iPlacementParam.yBase = _tree[1] / 2
-        iRasterParam.SetPlace(iPlacementParam)
-        iDocument2D.ksInsertRaster(iRasterParam)
         # %%
         # Рамка
         add_layer(24, 0, "Рамка")
