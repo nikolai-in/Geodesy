@@ -13,7 +13,6 @@ from scipy import interpolate
 from shapely import geometry, affinity
 from win32com.client import Dispatch, gencache  # Компас-3д
 
-# %%
 #  Подключим константы API Компас
 kompas6_constants = gencache.EnsureModule("{75C9F5D0-B5B8-4526-8681-9903C567D2ED}", 0, 1, 0).constants
 kompas6_constants_3d = gencache.EnsureModule("{2CAF168C-7961-4B90-9DA2-701419BEEFE3}", 0, 1, 0).constants
@@ -200,7 +199,6 @@ def get_intersections(x0, y0, r0, x1, y1, r1):
         return x3, y3, x4, y4
 
 
-# %%
 def add_rect(starting_corner: Tuple[float, float], h: float, w: float, angle: float = 0, style: int = 1) -> int:
     i_rectangle_param = kompas6_api5_module.ksRectangleParam(
         kompas_object.GetParamStruct(kompas6_constants.ko_RectangleParam))
@@ -276,7 +274,6 @@ def main() -> None:
         wb.save()
         wb.close()
 
-        # %%
         table_79 = pd.read_excel('../../Геодезия.xlsm', sheet_name='pandasPlan79')
         table_10 = pd.read_excel('../../Геодезия.xlsm', sheet_name='pandasPlan10')
 
@@ -372,7 +369,6 @@ def main() -> None:
                 else:
                     interpolated_points.update({i: [_interpolated_point]})
 
-        # %%
         x = [extra_points[p][0] for p in extra_points]
         y = [extra_points[p][1] for p in extra_points]
         centroid = (sum(x) / len(extra_points), sum(y) / len(extra_points))
@@ -383,11 +379,8 @@ def main() -> None:
         current_view.Y = 420 / 2 - centroid[1] / 2
         current_view.Update()
 
-        # %%
-
         interpolate_line("7", "8", interpolated_points, extra_points)
 
-        # %%
         add_layer(4, 3, "Кривые интерполяции пашни")
 
         _max_num_of_points = max([len(interpolated_points[height_points]) for height_points in interpolated_points])
@@ -405,7 +398,7 @@ def main() -> None:
             for point in interpolated_points[height]:
                 iDocument2D.ksPoint(*point, 0)
             iDocument2D.ksEndObj()
-        # %%
+
         add_layer(5, 2, "Точки интерполяции берега")
 
         interpolated_points_shore = {}
@@ -444,7 +437,6 @@ def main() -> None:
         interpolate_line("1", "21", interpolated_points_shore, extra_points)
         interpolate_line("21", "21", interpolated_points_shore, extra_points)
 
-        # %%
         add_layer(6, 3, "Кривые интерполяции берега")
 
         for height in interpolated_points_shore:
@@ -487,14 +479,13 @@ def main() -> None:
         interpolated_points_fruit_garden[_last_point_between_21_23].insert(0, *_interpolation_p42_18[
             _last_point_between_21_23])
 
-        # %%
         add_layer(8, 3, "Кривые интерполяции ФС")
 
         iDocument2D.ksBezier(False, 1)
         for point in interpolated_points_fruit_garden[_last_point_between_21_23]:
             iDocument2D.ksPoint(*point, 0)
         iDocument2D.ksEndObj()
-        # %%
+
         # Горизонталь за ФС
         add_layer(9, 2, "Точки интерполяции за ФС")
 
@@ -537,7 +528,7 @@ def main() -> None:
             #       f"{ _left_border[i+1]}: {extra_points[ _left_border[i+1]]}")
             iDocument2D.ksLineSeg(
                 *[i * 1000 for i in (*extra_points[_left_border[i]][:2], *extra_points[_left_border[i + 1]][:2])], 4)
-        # %%
+
         add_layer(11, 3, "Верхняя граница")
 
         _top_border = "7,8,10,14,15".split(sep=",")
@@ -547,7 +538,7 @@ def main() -> None:
             #       f"{ _top_border[i+1]}: {extra_points[ _top_border[i+1]]}")
             iDocument2D.ksLineSeg(
                 *[i * 1000 for i in (*extra_points[_top_border[i]][:2], *extra_points[_top_border[i + 1]][:2])], 1)
-        # %%
+
         add_layer(12, 3, "Граница пашни")
 
         _p_border = "5,ПЗ41,9,112,8".split(sep=",")
@@ -591,7 +582,7 @@ def main() -> None:
 
         add_text("р. Соть", _xx, _yy,
                  np.rad2deg(get_angle_between_points(*extra_points["2"][:2], *extra_points["21"][:2])), 5)
-        # %%
+
         # Автодорога
 
         add_layer(14, 3, "Автодорога")
@@ -606,28 +597,18 @@ def main() -> None:
             _autobahn.append((xx, yy))
 
         for i in range(len(_autobahn) - 1):
-            obj = iDocument2D.ksLineSeg(*_autobahn[i], *_autobahn[i + 1], 4)
+            iDocument2D.ksLineSeg(*_autobahn[i], *_autobahn[i + 1], 4)
 
-        # %%
-
-        # %%
-
-        # %%
         # Текст пашни
         add_layer(15, 3, "Текст пашни")
 
         add_text("Пашня", *m_to_mm(sum_tuple(extra_points["111"][:2], (-20, 45))), 0, 7)
-        # %%
+
         # Текст лес
         add_layer(16, 3, "Текст лес")
 
         add_text("Лес", *m_to_mm(sum_tuple(extra_points["6"][:2], (-60, 0))), 0, 7)
 
-        # %%
-
-        # %%
-
-        # %%
         # Фруктовый сад
         add_layer(17, 3, "Колодец")
 
@@ -702,7 +683,6 @@ def main() -> None:
         add_text("2кж", _kg2_p2[0] - 2400, _kg2_p2[1] + 4000, np.rad2deg(get_angle_between_points(*_kg2_p2, *_kg2_p1)),
                  5)
 
-        # %%
         # Железная дорога
         add_layer(19, 3, "Железная дорога")
 
@@ -722,7 +702,6 @@ def main() -> None:
             _side_point_2 = endpoint_by_distance_and_angle(_start_point, -2.5, 45 - _alpha_rail)
             iDocument2D.ksLineSeg(*m_to_mm(_side_point_1), *m_to_mm(_side_point_2), 1)
 
-        # %%
         # Условные обозначения леса, луга, фруктового сада.
 
         _plan_poly = [m_to_mm(tuple(extra_points["20"][:2])), m_to_mm(tuple(extra_points["21"][:2])),
@@ -762,18 +741,16 @@ def main() -> None:
         _kg_poly_line = geometry.LineString(_kg_poly)
         _kg_poly = geometry.Polygon(_kg_poly_line)
 
-        # %%
         add_layer(20, 0, "Условные обозначения луга")
 
         for i in range(int(extra_points["20"][1] - int(extra_points["20"][1]) % 5), int(extra_points["7"][1]), 20):
             for b in range(int(extra_points["4"][0] - int(extra_points["4"][1]) % 5), int(extra_points["15"][0]), 20):
                 _d_point = geometry.Point(m_to_mm((b, i)))
-                if _plan_poly.contains(_d_point) and not _farm_poly.contains(
-                        _d_point) and not _fruit_garden_poly.contains(
-                    _d_point):
+                if _plan_poly.contains(_d_point) and \
+                        not _farm_poly.contains(_d_point) and \
+                        not _fruit_garden_poly.contains(_d_point):
                     draw_meadow(m_to_mm((b, i)))
 
-        # %%
         add_layer(21, 0, "Условные обозначения фруктового сада")
 
         for i in range(int(fruit_garden_points[2][1]), int(fruit_garden_points[0][1]), 5):
@@ -781,7 +758,7 @@ def main() -> None:
                 _d_point = geometry.Point(m_to_mm((b, i)))
                 if _fruit_garden_poly.contains(_d_point) and not _kg_poly.contains(_d_point):
                     iDocument2D.ksCircle(*m_to_mm((b, i)), 1000, 2)
-        # %%
+
         add_layer(22, 0, "Условные обозначения леса")
 
         for i in range(int(extra_points["4"][1] - int(extra_points["4"][1]) % 5), int(extra_points["7"][1]), 20):
@@ -790,9 +767,6 @@ def main() -> None:
                 if not _plan_poly.contains(_d_point):
                     iDocument2D.ksCircle(*m_to_mm((b, i)), 2500, 2)
 
-        # %%
-
-        # %%
         # Дерево
         add_layer(23, 0, "Дерево")
 
@@ -814,12 +788,11 @@ def main() -> None:
 
         add_raster('tree-64x64.png', (_tree[0] / 2 - 1.847273, _tree[1] / 2), 0.025)
 
-
-        # %%
         # Рамка
         add_layer(24, 0, "Рамка")
 
         _padding = 30
+
         _top_left_frame_corner = m_to_mm((extra_points["3"][0] - _padding, extra_points["7"][1] + _padding))
         _bottom_right_frame_corner = m_to_mm((extra_points["15"][0] + _padding, extra_points["19"][1] - _padding))
 
@@ -844,7 +817,6 @@ def main() -> None:
 
         add_rect(_top_left_frame_corner, *_wh_dif)
 
-        # %%
         _main_points = [tuple(int(i // 100) / 10 for i in extra_points[point][:2]) for point in
                         "ПЗ41,111,112,113,ПЗ42".split(sep=",")]
 
@@ -858,43 +830,26 @@ def main() -> None:
             for y_cord in _y_list:
                 iDocument2D.ksPoint(*m_to_mm(m_to_mm((x_cord, y_cord))), 8)
 
-        # %%
         for cord in _x_list:
             add_text(str(cord), int(cord * 1000000) + 2.5 * 2000, _bottom_right_frame_corner[1] + _padding / 7 * 1000,
                      90, 5)
             add_text(str(cord), int(cord * 1000000) + 2.5 * 2000, _top_left_frame_corner[1] - _padding / 2.5 * 1000, 90,
                      5)
 
-        # %%
         for cord in _y_list:
             add_text(str(cord), _top_left_frame_corner[0] + _padding / 7 * 1000, int(cord * 1000000) - 2.5 * 2000, 0, 5)
             add_text(str(cord), _bottom_right_frame_corner[0] + _padding / 2 * 1000, int(cord * 1000000) - 2.5 * 2000,
                      0, 5)
 
-        # %%
         # Добавить подпись
 
         add_text(f"План Масштаб 1:{ONE_TO_SCALE} Вариант: {_variant}", _top_left_frame_corner[0] + 10000,
                  _bottom_right_frame_corner[1] - 40000, 0, 14)
-        # %%
+
         if Path('../../../Watermark.png').exists():
             # Добавить картинку
+            add_raster('../../../Watermark.png', (extra_points["3"][0] / 2, extra_points["20"][1] / 2), 0.4)
 
-            iRasterParam = kompas6_api5_module.ksRasterParam(
-                kompas_object.GetParamStruct(kompas6_constants.ko_RasterParam))
-            iRasterParam.Init()
-            iRasterParam.embeded = True
-            iRasterParam.fileName = str(Path('../../../Watermark.png').absolute())
-            iPlacementParam = kompas6_api5_module.ksPlacementParam(
-                kompas_object.GetParamStruct(kompas6_constants.ko_PlacementParam))
-            iPlacementParam.Init()
-            iPlacementParam.angle = 0
-            iPlacementParam.scale_ = 0.4
-            iPlacementParam.xBase = extra_points["3"][0] / 2
-            iPlacementParam.yBase = extra_points["20"][1] / 2
-            iRasterParam.SetPlace(iPlacementParam)
-            iDocument2D.ksInsertRaster(iRasterParam)
-        # %%
         kompas_document.SaveAs(str(Path(f'../{_variant}.pdf').absolute()))
 
 
