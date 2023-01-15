@@ -245,10 +245,10 @@ def add_raster(path: str, point: Tuple[float, float], scale: float = 1, angle: f
     :param angle: Угол поворота вставки.
     :param embed: Встраивать или нет.
     """
-    iRasterParam = kompas6_api5_module.ksRasterParam(kompas_object.GetParamStruct(kompas6_constants.ko_RasterParam))
-    iRasterParam.Init()
-    iRasterParam.embeded = embed
-    iRasterParam.fileName = str(Path(path).absolute())
+    i_raster_param = kompas6_api5_module.ksRasterParam(kompas_object.GetParamStruct(kompas6_constants.ko_RasterParam))
+    i_raster_param.Init()
+    i_raster_param.embeded = embed
+    i_raster_param.fileName = str(Path(path).absolute())
     iPlacementParam = kompas6_api5_module.ksPlacementParam(
         kompas_object.GetParamStruct(kompas6_constants.ko_PlacementParam))
     iPlacementParam.Init()
@@ -256,8 +256,8 @@ def add_raster(path: str, point: Tuple[float, float], scale: float = 1, angle: f
     iPlacementParam.scale_ = scale
     iPlacementParam.xBase = point[0]
     iPlacementParam.yBase = point[1]
-    iRasterParam.SetPlace(iPlacementParam)
-    iDocument2D.ksInsertRaster(iRasterParam)
+    i_raster_param.SetPlace(iPlacementParam)
+    iDocument2D.ksInsertRaster(i_raster_param)
 
 
 ONE_TO_SCALE = 2000
