@@ -38,7 +38,7 @@ iDocument2D = kompas_object.ActiveDocument2D()
 
 
 def get_next_layer_id() -> int:
-    return kompas_document_2d.ViewsAndLayersManager.Views.ActiveView.Layers.Count + 1
+    return kompas_document_2d.ViewsAndLayersManager.Views.ActiveView.Layers.Count
 
 
 def change_variant(variant: int, workbook_path: Path | str, worksheet_name: str = "Варианты") -> None:
