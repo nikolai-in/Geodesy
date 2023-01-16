@@ -7,6 +7,7 @@ import LDefin2D  # Компас-3д
 import MiscellaneousHelpers as miscHelpers  # Компас-3д
 import numpy as np
 import pythoncom  # Компас-3д
+import xlwings as xw
 from scipy import interpolate
 from win32com.client import Dispatch, gencache  # Компас-3д
 
@@ -34,6 +35,24 @@ documents = application.Documents
 kompas_document = application.ActiveDocument
 kompas_document_2d = kompas_api7_module.IKompasDocument2D(kompas_document)
 iDocument2D = kompas_object.ActiveDocument2D()
+
+
+def change_variant(variant: int, workbook_path: Path | str, worksheet_name: str = "Варианты") -> None:
+    """Изменение варианта в файле Excel
+
+        Parameters:
+            variant (int): Номер варианта
+            workbook_path (Path | str): Путь к файлу Excel
+            worksheet_name (str, optional): Название листа. Defaults to "Варианты".
+    """
+    wb = xw.Book(workbook_path)
+    ws = wb.sheets[worksheet_name]
+
+    for _letter in ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I']:
+        ws[f"{_letter}{3}"].value = ws[f"{_letter}{4 + variant}"].value
+
+    wb.save()
+    wb.close()
 
 
 def add_layer(number: int, state: int = 3, name: str = None) -> None:
@@ -236,11 +255,12 @@ def sum_tuple(t1: Tuple[float, float] | List[float], t2: Tuple[float, float]) ->
 def add_raster(path: str, point: Tuple[float, float], scale: float = 1, angle: float = 0, embed: bool = True) -> None:
     """Добавляет растровое изображение в чертеж.
 
-    :param path: Путь к файлу.
-    :param point: Точка вставки (1 равняется кратности вида).
-    :param scale: Масштаб вставки.
-    :param angle: Угол поворота вставки.
-    :param embed: Встраивать или нет.
+        Parameters:
+            path (str): Путь к файлу.
+            point (Tuple[float, float]): Точка вставки (1 равняется кратности вида).
+            scale (float): Масштаб вставки.
+            angle (float): Угол поворота вставки.
+            embed (float): Встраивать или нет.
     """
     i_raster_param = kompas6_api5_module.ksRasterParam(kompas_object.GetParamStruct(kompas6_constants.ko_RasterParam))
     i_raster_param.Init()
