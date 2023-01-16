@@ -1,22 +1,21 @@
+from math import *
+from pathlib import Path
+
+import numpy as np
 import pandas as pd
-import xlwings as xw
+from scipy import interpolate
 from shapely import geometry, affinity
 
-from utils.utils import *
+from utils.utils import change_variant, add_view, add_layer, add_text, add_rect, add_raster, iDocument2D, \
+    kompas_document_2d, get_angle_between_points, endpoint_by_distance_and_angle, m_to_mm, mm_to_m, interpolate_line, \
+    sum_tuple, get_intersections, line_len, draw_meadow, f_angle, f_slope
 
 ONE_TO_SCALE = 2000
 
 
 def main() -> None:
     for _variant in range(22, 23):
-        wb = xw.Book('../../Геодезия.xlsm')
-        ws = wb.sheets["Варианты"]
-
-        for _letter in ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I']:
-            ws[f"{_letter}{3}"].value = ws[f"{_letter}{4 + _variant}"].value
-
-        wb.save()
-        wb.close()
+        change_variant(_variant, workbook_path="../../Геодезия.xlsm")
 
         table_79 = pd.read_excel('../../Геодезия.xlsm', sheet_name='pandasPlan79')
         table_10 = pd.read_excel('../../Геодезия.xlsm', sheet_name='pandasPlan10')
