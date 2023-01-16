@@ -37,6 +37,10 @@ kompas_document_2d = kompas_api7_module.IKompasDocument2D(kompas_document)
 iDocument2D = kompas_object.ActiveDocument2D()
 
 
+def get_next_layer_id() -> int:
+    return kompas_document_2d.ViewsAndLayersManager.Views.ActiveView.Layers.Count + 1
+
+
 def change_variant(variant: int, workbook_path: Path | str, worksheet_name: str = "Варианты") -> None:
     """Изменение варианта в файле Excel
 

@@ -7,21 +7,22 @@ from scipy import interpolate
 from shapely import geometry, affinity
 
 from utils.utils import change_variant, add_view, add_layer, add_text, add_rect, add_raster, iDocument2D, \
-    kompas_document_2d, get_angle_between_points, endpoint_by_distance_and_angle, m_to_mm, mm_to_m, interpolate_line, \
-    sum_tuple, get_intersections, line_len, draw_meadow, f_angle, f_slope
+    kompas_document_2d, kompas_document, get_angle_between_points, endpoint_by_distance_and_angle, m_to_mm, mm_to_m, \
+    interpolate_line, sum_tuple, get_intersections, line_len, draw_meadow, f_angle, f_slope, get_next_layer_id
 
 ONE_TO_SCALE = 2000
+WORKBOOK_PATH = Path("../../Геодезия.xlsm").absolute()
 
 
 def main() -> None:
     for _variant in range(22, 23):
-        change_variant(_variant, workbook_path="../../Геодезия.xlsm")
+        change_variant(_variant, workbook_path=WORKBOOK_PATH)
 
-        table_79 = pd.read_excel('../../Геодезия.xlsm', sheet_name='pandasPlan79')
-        table_10 = pd.read_excel('../../Геодезия.xlsm', sheet_name='pandasPlan10')
+        table_79 = pd.read_excel(WORKBOOK_PATH, sheet_name='pandasPlan79')
+        table_10 = pd.read_excel(WORKBOOK_PATH, sheet_name='pandasPlan10')
 
         add_view("План", 1 / ONE_TO_SCALE)
-        add_layer(1, 3, "Основные Точки")
+        add_layer(get_next_layer_id(), 3, "Основные Точки")
 
         for i, row in table_79.iterrows():
             # X и Y перевёрнуты
@@ -30,7 +31,7 @@ def main() -> None:
                      row["Y"] * 1000 - 15000,
                      row["X"] * 1000 - 7000)
 
-        add_layer(2, 3, "Побочные Точки")
+        add_layer(get_next_layer_id(), 3, "Побочные Точки")
 
         extra_points = {}
 
@@ -74,7 +75,7 @@ def main() -> None:
 
         interpolated_points = {}
 
-        add_layer(3, 2, "Точки интерполяции пашни")
+        add_layer(get_next_layer_id(), 2, "Точки интерполяции пашни")
         # todo: переделать эту часть кода
 
         con_111 = "5,6,7,8,9,112,ПЗ41".split(",")
@@ -124,7 +125,7 @@ def main() -> None:
 
         interpolate_line("7", "8", interpolated_points, extra_points)
 
-        add_layer(4, 3, "Кривые интерполяции пашни")
+        add_layer(get_next_layer_id(), 3, "Кривые интерполяции пашни")
 
         _max_num_of_points = max([len(interpolated_points[height_points]) for height_points in interpolated_points])
 
@@ -142,7 +143,7 @@ def main() -> None:
                 iDocument2D.ksPoint(*point, 0)
             iDocument2D.ksEndObj()
 
-        add_layer(5, 2, "Точки интерполяции берега")
+        add_layer(get_next_layer_id(), 2, "Точки интерполяции берега")
 
         interpolated_points_shore = {}
 
@@ -180,7 +181,7 @@ def main() -> None:
         interpolate_line("1", "21", interpolated_points_shore, extra_points)
         interpolate_line("21", "21", interpolated_points_shore, extra_points)
 
-        add_layer(6, 3, "Кривые интерполяции берега")
+        add_layer(get_next_layer_id(), 3, "Кривые интерполяции берега")
 
         for height in interpolated_points_shore:
 
@@ -195,7 +196,7 @@ def main() -> None:
             iDocument2D.ksEndObj()
 
         # Горизонталь вокруг ФС
-        add_layer(7, 2, "Точки интерполяции ФС")
+        add_layer(get_next_layer_id(), 2, "Точки интерполяции ФС")
 
         interpolated_points_fruit_garden = {}
 
@@ -222,7 +223,7 @@ def main() -> None:
         interpolated_points_fruit_garden[_last_point_between_21_23].insert(0, *_interpolation_p42_18[
             _last_point_between_21_23])
 
-        add_layer(8, 3, "Кривые интерполяции ФС")
+        add_layer(get_next_layer_id(), 3, "Кривые интерполяции ФС")
 
         iDocument2D.ksBezier(False, 1)
         for point in interpolated_points_fruit_garden[_last_point_between_21_23]:
@@ -230,7 +231,7 @@ def main() -> None:
         iDocument2D.ksEndObj()
 
         # Горизонталь за ФС
-        add_layer(9, 2, "Точки интерполяции за ФС")
+        add_layer(get_next_layer_id(), 2, "Точки интерполяции за ФС")
 
         interpolated_points_behind_fruit_garden = {}
 
@@ -253,7 +254,7 @@ def main() -> None:
         interpolated_points_behind_fruit_garden[_last_point_between_112_10].insert(0, *_interpolation_8_10[
             _last_point_between_112_10])
 
-        add_layer(10, 3, "Кривые интерполяции за ФС")
+        add_layer(get_next_layer_id(), 3, "Кривые интерполяции за ФС")
 
         iDocument2D.ksBezier(False, 1)
         for point in interpolated_points_behind_fruit_garden[_last_point_between_112_10]:
@@ -262,7 +263,7 @@ def main() -> None:
 
         # Соединить основные границы
 
-        add_layer(10, 3, "Левая граница")
+        add_layer(get_next_layer_id(), 3, "Левая граница")
 
         _left_border = "4,5,6,7".split(sep=",")
 
@@ -272,7 +273,7 @@ def main() -> None:
             iDocument2D.ksLineSeg(
                 *[i * 1000 for i in (*extra_points[_left_border[i]][:2], *extra_points[_left_border[i + 1]][:2])], 4)
 
-        add_layer(11, 3, "Верхняя граница")
+        add_layer(get_next_layer_id(), 3, "Верхняя граница")
 
         _top_border = "7,8,10,14,15".split(sep=",")
 
@@ -282,7 +283,7 @@ def main() -> None:
             iDocument2D.ksLineSeg(
                 *[i * 1000 for i in (*extra_points[_top_border[i]][:2], *extra_points[_top_border[i + 1]][:2])], 1)
 
-        add_layer(12, 3, "Граница пашни")
+        add_layer(get_next_layer_id(), 3, "Граница пашни")
 
         _p_border = "5,ПЗ41,9,112,8".split(sep=",")
 
@@ -292,7 +293,7 @@ def main() -> None:
             iDocument2D.ksLineSeg(
                 *[i * 1000 for i in (*extra_points[_p_border[i]][:2], *extra_points[_p_border[i + 1]][:2])], 4)
 
-        add_layer(13, 3, "Река")
+        add_layer(get_next_layer_id(), 3, "Река")
 
         _river_border = "4,2,21,20".split(sep=",")
 
@@ -328,7 +329,7 @@ def main() -> None:
 
         # Автодорога
 
-        add_layer(14, 3, "Автодорога")
+        add_layer(get_next_layer_id(), 3, "Автодорога")
 
         _alpha = np.rad2deg(get_angle_between_points(*extra_points["6"][:2], *extra_points["7"][:2]))
 
@@ -343,17 +344,17 @@ def main() -> None:
             iDocument2D.ksLineSeg(*_autobahn[i], *_autobahn[i + 1], 4)
 
         # Текст пашни
-        add_layer(15, 3, "Текст пашни")
+        add_layer(get_next_layer_id(), 3, "Текст пашни")
 
         add_text("Пашня", *m_to_mm(sum_tuple(extra_points["111"][:2], (-20, 45))), 0, 7)
 
         # Текст лес
-        add_layer(16, 3, "Текст лес")
+        add_layer(get_next_layer_id(), 3, "Текст лес")
 
         add_text("Лес", *m_to_mm(sum_tuple(extra_points["6"][:2], (-60, 0))), 0, 7)
 
         # Фруктовый сад
-        add_layer(17, 3, "Колодец")
+        add_layer(get_next_layer_id(), 3, "Колодец")
 
         _alpha_14_15 = np.rad2deg(get_angle_between_points(*extra_points["14"][:2], *extra_points["15"][:2]))
         _alpha_113_P42 = np.rad2deg(get_angle_between_points(*extra_points["113"][:2], *extra_points["ПЗ42"][:2]))
@@ -380,7 +381,7 @@ def main() -> None:
 
         add_text("Колодец", *m_to_mm(sum_tuple(mm_to_m(_well_point_3[:2]), (-10, 5))))
 
-        add_layer(18, 3, "Фруктовый сад")
+        add_layer(get_next_layer_id(), 3, "Фруктовый сад")
 
         # fruit_garden_points = [endpoint_by_distance_and_angle(extra_points["113"][:2], 81.5, _alpha_113_P42 - (44 +
         # (1/60))), endpoint_by_distance_and_angle(endpoint_by_distance_and_angle(extra_points["113"][:2], 58.61,
@@ -408,7 +409,7 @@ def main() -> None:
         add_text("ФС", *m_to_mm(endpoint_by_distance_and_angle(fruit_garden_points[0], 15, _alpha_fs + 30)),
                  np.rad2deg(get_angle_between_points(*fruit_garden_points[0], *fruit_garden_points[1])), 5)
 
-        add_layer(19, 3, "2КЖ")
+        add_layer(get_next_layer_id(), 3, "2КЖ")
 
         _kg2_p1 = m_to_mm(
             endpoint_by_distance_and_angle(
@@ -427,7 +428,7 @@ def main() -> None:
                  5)
 
         # Железная дорога
-        add_layer(19, 3, "Железная дорога")
+        add_layer(get_next_layer_id(), 3, "Железная дорога")
 
         _railroad_p1 = endpoint_by_distance_and_angle(extra_points["113"][:2], 12.64, _alpha_14_15)
         _railroad_end = endpoint_by_distance_and_angle(
@@ -484,7 +485,7 @@ def main() -> None:
         _kg_poly_line = geometry.LineString(_kg_poly)
         _kg_poly = geometry.Polygon(_kg_poly_line)
 
-        add_layer(20, 0, "Условные обозначения луга")
+        add_layer(get_next_layer_id(), 0, "Условные обозначения луга")
 
         for i in range(int(extra_points["20"][1] - int(extra_points["20"][1]) % 5), int(extra_points["7"][1]), 20):
             for b in range(int(extra_points["4"][0] - int(extra_points["4"][1]) % 5), int(extra_points["15"][0]), 20):
@@ -494,7 +495,7 @@ def main() -> None:
                         not _fruit_garden_poly.contains(_d_point):
                     draw_meadow(m_to_mm((b, i)))
 
-        add_layer(21, 0, "Условные обозначения фруктового сада")
+        add_layer(get_next_layer_id(), 0, "Условные обозначения фруктового сада")
 
         for i in range(int(fruit_garden_points[2][1]), int(fruit_garden_points[0][1]), 5):
             for b in range(int(fruit_garden_points[-1][0]), int(fruit_garden_points[1][0]), 5):
@@ -502,7 +503,7 @@ def main() -> None:
                 if _fruit_garden_poly.contains(_d_point) and not _kg_poly.contains(_d_point):
                     iDocument2D.ksCircle(*m_to_mm((b, i)), 1000, 2)
 
-        add_layer(22, 0, "Условные обозначения леса")
+        add_layer(get_next_layer_id(), 0, "Условные обозначения леса")
 
         for i in range(int(extra_points["4"][1] - int(extra_points["4"][1]) % 5), int(extra_points["7"][1]), 20):
             for b in range(int(extra_points["3"][0] - int(extra_points["3"][1]) % 5), int(extra_points["7"][0]), 20):
@@ -511,7 +512,7 @@ def main() -> None:
                     iDocument2D.ksCircle(*m_to_mm((b, i)), 2500, 2)
 
         # Дерево
-        add_layer(23, 0, "Дерево")
+        add_layer(get_next_layer_id(), 0, "Дерево")
 
         _a1 = radians(49 + 15 / 60)
         _a2 = radians(f_angle(f_slope(*extra_points["113"][:2], *extra_points["112"][:2]),
@@ -532,7 +533,7 @@ def main() -> None:
         add_raster('tree-64x64.png', (_tree[0] / 2 - 1.847273, _tree[1] / 2), 0.025)
 
         # Рамка
-        add_layer(24, 0, "Рамка")
+        add_layer(get_next_layer_id(), 0, "Рамка")
 
         _padding = 30
 
