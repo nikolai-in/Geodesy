@@ -14,64 +14,69 @@ ONE_TO_SCALE = 2000
 WORKBOOK_PATH = Path("../../Геодезия.xlsm").absolute()
 
 
-def main() -> None:
-    for _variant in range(22, 23):
-        change_variant(_variant, workbook_path=WORKBOOK_PATH)
+def get_points_dict(workbook_path: Path) -> dict:
+    table_79 = pd.read_excel(workbook_path, sheet_name='pandasPlan79')
+    table_10 = pd.read_excel(workbook_path, sheet_name='pandasPlan10')
 
-        table_79 = pd.read_excel(WORKBOOK_PATH, sheet_name='pandasPlan79')
-        table_10 = pd.read_excel(WORKBOOK_PATH, sheet_name='pandasPlan10')
+    point_dict = {}
+
+    for _, row in table_10.iterrows():
+        if " - " in str(row["№№"]):
+            origin_label, dest_label = row["№№"].split(" - ")
+
+            if origin_label.isdigit():
+                origin_label = int(origin_label)
+
+            if dest_label.isdigit():
+                dest_label = int(dest_label)
+
+            origin = (table_79.loc[table_79['№№'] == origin_label]["Y"].values[0],
+                      table_79.loc[table_79['№№'] == origin_label]["X"].values[0])
+
+            _dest = (table_79.loc[table_79['№№'] == dest_label]["Y"].values[0],
+                     table_79.loc[table_79['№№'] == dest_label]["X"].values[0])
+
+            angle = np.rad2deg(get_angle_between_points(origin[0], origin[1], _dest[0], _dest[1]))
+            _i_am_shit_at_coding = list(origin)
+            _i_am_shit_at_coding.append(table_79.loc[table_79['№№'] == origin_label]["H"].values[0])
+            point_dict.update({str(origin_label): _i_am_shit_at_coding})
+            continue
+        else:
+            if not origin:
+                continue
+        _d = row["Отсчет по дальномеру kl, м"]
+        _alpha = row["Отсчет по гориз. Кругу"]
+        xx = origin[0] + (_d * cos(np.radians(angle - _alpha)))
+        yy = origin[1] + (_d * sin(np.radians(angle - _alpha)))
+
+        point_dict.update({str(row["№№"]): [xx, yy, row["Отметки реечн. точек Hр.т., м"]]})
+
+    return point_dict
+
+
+def add_point_marker(point_name: str, point_cords: tuple[float, float], point_height: float, radius: float = 1000, offset: tuple[float, float] = (15000, 7000)):
+    iDocument2D.ksCircle(*point_cords, radius, 1)
+    add_text(f'{point_name} ({str("{:1.2f}".format(point_height)).replace(".", ",")})',
+             *map(lambda i, j: (i - j), point_cords, offset))
+
+
+def main() -> None:
+    for _variant in range(24, 25):
+        change_variant(_variant, workbook_path=WORKBOOK_PATH)
 
         add_view("План", 1 / ONE_TO_SCALE)
         add_layer(get_next_layer_id(), 3, "Основные Точки")
 
-        for i, row in table_79.iterrows():
-            # X и Y перевёрнуты
-            iDocument2D.ksCircle(row["Y"] * 1000, row["X"] * 1000, 1000, 1)
-            add_text(str(row["№№"]) + " (" + str("{:1.2f}".format(row["H"])).replace(".", ",") + ")",
-                     row["Y"] * 1000 - 15000,
-                     row["X"] * 1000 - 7000)
+        points_dict = get_points_dict(WORKBOOK_PATH)
+
+        for point in (main_points_names := ["ПЗ41", "111", "112", "113", "ПЗ42"]):
+            add_point_marker(point, m_to_mm(points_dict[point][:2]), points_dict[point][2] * 1000)
 
         add_layer(get_next_layer_id(), 3, "Побочные Точки")
 
-        extra_points = {}
-
-        for i, row in table_10.iterrows():
-            if " - " in str(row["№№"]):
-                origin_label, dest_label = row["№№"].split(" - ")
-
-                if origin_label.isdigit():
-                    origin_label = int(origin_label)
-
-                if dest_label.isdigit():
-                    dest_label = int(dest_label)
-
-                origin = (table_79.loc[table_79['№№'] == origin_label]["Y"].values[0],
-                          table_79.loc[table_79['№№'] == origin_label]["X"].values[0])
-
-                _dest = (table_79.loc[table_79['№№'] == dest_label]["Y"].values[0],
-                         table_79.loc[table_79['№№'] == dest_label]["X"].values[0])
-
-                angle = np.rad2deg(get_angle_between_points(origin[0], origin[1], _dest[0], _dest[1]))
-                _i_am_shit_at_coding = list(origin)
-                _i_am_shit_at_coding.append(table_79.loc[table_79['№№'] == origin_label]["H"].values[0])
-                extra_points.update({str(origin_label): _i_am_shit_at_coding})
-                continue
-            else:
-                if not origin:
-                    continue
-            _d = row["Отсчет по дальномеру kl, м"]
-            _alpha = row["Отсчет по гориз. Кругу"]
-            xx = origin[0] + (_d * cos(np.radians(angle - _alpha)))
-            yy = origin[1] + (_d * sin(np.radians(angle - _alpha)))
-            # obj = iDocument2D.ksLineSeg(origin[0] * 1000, origin[1] * 1000, xx * 1000,yy * 1000, 6)
-
-            add_text(
-                str(row["№№"]) + " (" + str("{:1.3f}".format(row["Отметки реечн. точек Hр.т., м"])).replace(".",
-                                                                                                            ",") + ")",
-                xx * 1000 + 2000, yy * 1000 - 1000)
-
-            iDocument2D.ksCircle(xx * 1000, yy * 1000, 1000, 1)
-            extra_points.update({str(row["№№"]): [xx, yy, row["Отметки реечн. точек Hр.т., м"]]})
+        for point in points_dict:
+            if point not in main_points_names:
+                add_point_marker(point, m_to_mm(points_dict[point][:2]), points_dict[point][2] * 1000)
 
         interpolated_points = {}
 
@@ -80,9 +85,9 @@ def main() -> None:
 
         con_111 = "5,6,7,8,9,112,ПЗ41".split(",")
 
-        center_point = np.array(extra_points["111"])
+        center_point = np.array(points_dict["111"])
         for point in con_111:
-            point = np.array(extra_points[point])
+            point = np.array(points_dict[point])
 
             if center_point[2] > point[2]:
                 _coordinate_dif = center_point[:2] - point[:2]
@@ -113,9 +118,9 @@ def main() -> None:
                 else:
                     interpolated_points.update({i: [_interpolated_point]})
 
-        x = [extra_points[p][0] for p in extra_points]
-        y = [extra_points[p][1] for p in extra_points]
-        centroid = (sum(x) / len(extra_points), sum(y) / len(extra_points))
+        x = [points_dict[p][0] for p in points_dict]
+        y = [points_dict[p][1] for p in points_dict]
+        centroid = (sum(x) / len(points_dict), sum(y) / len(points_dict))
         iDocument2D.ksPoint(*(cord * 1000 for cord in centroid), 0)
 
         current_view = kompas_document_2d.ViewsAndLayersManager.Views.ActiveView
@@ -123,7 +128,7 @@ def main() -> None:
         current_view.Y = 420 / 2 - centroid[1] / 2
         current_view.Update()
 
-        interpolate_line("7", "8", interpolated_points, extra_points)
+        interpolate_line("7", "8", interpolated_points, points_dict)
 
         add_layer(get_next_layer_id(), 3, "Кривые интерполяции пашни")
 
@@ -148,38 +153,38 @@ def main() -> None:
         interpolated_points_shore = {}
 
         # ПЗ 41
-        interpolate_line("4", "5", interpolated_points_shore, extra_points)
-        interpolate_line("ПЗ41", "1", interpolated_points_shore, extra_points)
-        interpolate_line("ПЗ41", "2", interpolated_points_shore, extra_points)
-        interpolate_line("ПЗ41", "4", interpolated_points_shore, extra_points)
-        interpolate_line("ПЗ41", "5", interpolated_points_shore, extra_points)
-        interpolate_line("ПЗ41", "21", interpolated_points_shore, extra_points)
+        interpolate_line("4", "5", interpolated_points_shore, points_dict)
+        interpolate_line("ПЗ41", "1", interpolated_points_shore, points_dict)
+        interpolate_line("ПЗ41", "2", interpolated_points_shore, points_dict)
+        interpolate_line("ПЗ41", "4", interpolated_points_shore, points_dict)
+        interpolate_line("ПЗ41", "5", interpolated_points_shore, points_dict)
+        interpolate_line("ПЗ41", "21", interpolated_points_shore, points_dict)
 
         # 112
         # interpolate_line("8", "10", interpolated_points_shore, extra_points)
         # interpolate_line("112", "10", interpolated_points_shore, extra_points)
         # interpolate_line("112", "13", interpolated_points_shore, extra_points)
         # interpolate_line("9", "12", interpolated_points_shore, extra_points)
-        interpolate_line("12", "13", interpolated_points_shore, extra_points)
+        interpolate_line("12", "13", interpolated_points_shore, points_dict)
         # interpolate_line("13", "1", interpolated_points_shore, extra_points)
-        interpolate_line("1", "112", interpolated_points_shore, extra_points)
+        interpolate_line("1", "112", interpolated_points_shore, points_dict)
 
         # 113
-        interpolate_line("10", "14", interpolated_points_shore, extra_points)
+        interpolate_line("10", "14", interpolated_points_shore, points_dict)
         # interpolate_line("113", "15", interpolated_points_shore, extra_points)
         # interpolate_line("17", "113", interpolated_points_shore, extra_points)
-        interpolate_line("16", "113", interpolated_points_shore, extra_points)
+        interpolate_line("16", "113", interpolated_points_shore, points_dict)
         # interpolate_line("17", "112", interpolated_points_shore, extra_points)
         # interpolate_line("17", "14", interpolated_points_shore, extra_points)
 
         # ПЗ 42
-        interpolate_line("ПЗ42", "20", interpolated_points_shore, extra_points)
-        interpolate_line("ПЗ42", "18", interpolated_points_shore, extra_points)
-        interpolate_line("23", "22", interpolated_points_shore, extra_points)
-        interpolate_line("22", "21", interpolated_points_shore, extra_points)
-        interpolate_line("20", "21", interpolated_points_shore, extra_points)
-        interpolate_line("1", "21", interpolated_points_shore, extra_points)
-        interpolate_line("21", "21", interpolated_points_shore, extra_points)
+        interpolate_line("ПЗ42", "20", interpolated_points_shore, points_dict)
+        interpolate_line("ПЗ42", "18", interpolated_points_shore, points_dict)
+        interpolate_line("23", "22", interpolated_points_shore, points_dict)
+        interpolate_line("22", "21", interpolated_points_shore, points_dict)
+        interpolate_line("20", "21", interpolated_points_shore, points_dict)
+        interpolate_line("1", "21", interpolated_points_shore, points_dict)
+        interpolate_line("21", "21", interpolated_points_shore, points_dict)
 
         add_layer(get_next_layer_id(), 3, "Кривые интерполяции берега")
 
@@ -200,26 +205,26 @@ def main() -> None:
 
         interpolated_points_fruit_garden = {}
 
-        _interpolation_21_23 = interpolate_line("21", "23", {}, extra_points)
+        _interpolation_21_23 = interpolate_line("21", "23", {}, points_dict)
         _last_point_between_21_23 = list(_interpolation_21_23.keys())[-1]
 
         interpolated_points_fruit_garden.update(
             {_last_point_between_21_23: _interpolation_21_23[_last_point_between_21_23]})
 
-        _interpolation_112_17 = interpolate_line("112", "17", {}, extra_points)
+        _interpolation_112_17 = interpolate_line("112", "17", {}, points_dict)
         if _last_point_between_21_23 in _interpolation_112_17:
             interpolated_points_fruit_garden[_last_point_between_21_23].append(
                 *_interpolation_112_17[_last_point_between_21_23])
 
-        _interpolation_14_17 = interpolate_line("14", "17", {}, extra_points)
+        _interpolation_14_17 = interpolate_line("14", "17", {}, points_dict)
         interpolated_points_fruit_garden[_last_point_between_21_23].append(
             *_interpolation_14_17[_last_point_between_21_23])
 
-        _interpolation_15_113 = interpolate_line("15", "113", {}, extra_points)
+        _interpolation_15_113 = interpolate_line("15", "113", {}, points_dict)
         interpolated_points_fruit_garden[_last_point_between_21_23].append(
             *_interpolation_15_113[_last_point_between_21_23])
 
-        _interpolation_p42_18 = interpolate_line("ПЗ42", "18", {}, extra_points)
+        _interpolation_p42_18 = interpolate_line("ПЗ42", "18", {}, points_dict)
         interpolated_points_fruit_garden[_last_point_between_21_23].insert(0, *_interpolation_p42_18[
             _last_point_between_21_23])
 
@@ -235,22 +240,22 @@ def main() -> None:
 
         interpolated_points_behind_fruit_garden = {}
 
-        _interpolation_112_10 = interpolate_line("112", "10", {}, extra_points)
+        _interpolation_112_10 = interpolate_line("112", "10", {}, points_dict)
         _last_point_between_112_10 = list(_interpolation_112_10.keys())[-1]
 
         interpolated_points_behind_fruit_garden.update(
             {_last_point_between_112_10: _interpolation_112_10[_last_point_between_112_10]})
 
-        _interpolation_14_17 = interpolate_line("14", "17", {}, extra_points)
+        _interpolation_14_17 = interpolate_line("14", "17", {}, points_dict)
         interpolated_points_behind_fruit_garden[_last_point_between_112_10].append(
             *_interpolation_14_17[_last_point_between_112_10])
 
-        _interpolation_15_113 = interpolate_line("15", "113", {}, extra_points)
+        _interpolation_15_113 = interpolate_line("15", "113", {}, points_dict)
         if _last_point_between_112_10 in _interpolation_15_113:
             interpolated_points_behind_fruit_garden[_last_point_between_112_10].append(
                 *_interpolation_15_113[_last_point_between_112_10])
 
-        _interpolation_8_10 = interpolate_line("8", "10", {}, extra_points)
+        _interpolation_8_10 = interpolate_line("8", "10", {}, points_dict)
         interpolated_points_behind_fruit_garden[_last_point_between_112_10].insert(0, *_interpolation_8_10[
             _last_point_between_112_10])
 
@@ -271,7 +276,7 @@ def main() -> None:
             # print(f"{ _left_border[i]}: {extra_points[ _left_border[i]]}\t"
             #       f"{ _left_border[i+1]}: {extra_points[ _left_border[i+1]]}")
             iDocument2D.ksLineSeg(
-                *[i * 1000 for i in (*extra_points[_left_border[i]][:2], *extra_points[_left_border[i + 1]][:2])], 4)
+                *[i * 1000 for i in (*points_dict[_left_border[i]][:2], *points_dict[_left_border[i + 1]][:2])], 4)
 
         add_layer(get_next_layer_id(), 3, "Верхняя граница")
 
@@ -281,7 +286,7 @@ def main() -> None:
             # print(f"{ _top_border[i]}: {extra_points[ _top_border[i]]}\t"
             #       f"{ _top_border[i+1]}: {extra_points[ _top_border[i+1]]}")
             iDocument2D.ksLineSeg(
-                *[i * 1000 for i in (*extra_points[_top_border[i]][:2], *extra_points[_top_border[i + 1]][:2])], 1)
+                *[i * 1000 for i in (*points_dict[_top_border[i]][:2], *points_dict[_top_border[i + 1]][:2])], 1)
 
         add_layer(get_next_layer_id(), 3, "Граница пашни")
 
@@ -291,7 +296,7 @@ def main() -> None:
             # print(f"{ _p_border[i]}: {extra_points[ _p_border[i]]}\t"
             #       f"{ _p_border[i+1]}: {extra_points[ _p_border[i+1]]}")
             iDocument2D.ksLineSeg(
-                *[i * 1000 for i in (*extra_points[_p_border[i]][:2], *extra_points[_p_border[i + 1]][:2])], 4)
+                *[i * 1000 for i in (*points_dict[_p_border[i]][:2], *points_dict[_p_border[i + 1]][:2])], 4)
 
         add_layer(get_next_layer_id(), 3, "Река")
 
@@ -301,43 +306,43 @@ def main() -> None:
             # print(f"{ _river_border[i]}: {extra_points[ _river_border[i]]}\t"
             #       f"{ _river_border[i+1]}: {extra_points[ _river_border[i+1]]}")
             iDocument2D.ksLineSeg(
-                *[i * 1000 for i in (*extra_points[_river_border[i]][:2], *extra_points[_river_border[i + 1]][:2])], 1)
+                *[i * 1000 for i in (*points_dict[_river_border[i]][:2], *points_dict[_river_border[i + 1]][:2])], 1)
 
         # вторая сторона реки
 
-        _alpha = np.rad2deg(get_angle_between_points(*extra_points["4"][:2], *extra_points["3"][:2]))
+        _alpha = np.rad2deg(get_angle_between_points(*points_dict["4"][:2], *points_dict["3"][:2]))
 
         _second_shore = []
         _d = 32
         for i in range(len(_river_border)):
             _second_shore.append(endpoint_by_distance_and_angle(
-                m_to_mm(extra_points[_river_border[i]][:2]), _d * 1000, _alpha))
+                m_to_mm(points_dict[_river_border[i]][:2]), _d * 1000, _alpha))
 
         for i in range(len(_second_shore) - 1):
             if i != len(_second_shore) - 2:
                 iDocument2D.ksLineSeg(*_second_shore[i], *_second_shore[i + 1], 1)
             else:
-                iDocument2D.ksLineSeg(*_second_shore[i], *(p * 1000 for p in extra_points["19"][:2]), 1)
+                iDocument2D.ksLineSeg(*_second_shore[i], *(p * 1000 for p in points_dict["19"][:2]), 1)
 
         # Добавить подпись
 
-        _xx = (extra_points["2"][0] + extra_points["21"][0]) / 2 * 1000 + (_d / 2 * 1000 * cos(np.radians(_alpha)))
-        _yy = (extra_points["2"][1] + extra_points["21"][1]) / 2 * 1000 + (_d / 2 * 1000 * sin(np.radians(_alpha)))
+        _xx = (points_dict["2"][0] + points_dict["21"][0]) / 2 * 1000 + (_d / 2 * 1000 * cos(np.radians(_alpha)))
+        _yy = (points_dict["2"][1] + points_dict["21"][1]) / 2 * 1000 + (_d / 2 * 1000 * sin(np.radians(_alpha)))
 
         add_text("р. Соть", _xx, _yy,
-                 np.rad2deg(get_angle_between_points(*extra_points["2"][:2], *extra_points["21"][:2])), 5)
+                 np.rad2deg(get_angle_between_points(*points_dict["2"][:2], *points_dict["21"][:2])), 5)
 
         # Автодорога
 
         add_layer(get_next_layer_id(), 3, "Автодорога")
 
-        _alpha = np.rad2deg(get_angle_between_points(*extra_points["6"][:2], *extra_points["7"][:2]))
+        _alpha = np.rad2deg(get_angle_between_points(*points_dict["6"][:2], *points_dict["7"][:2]))
 
         _autobahn = []
         _d = 10
         for i in range(len(_top_border)):
-            xx = extra_points[_top_border[i]][0] * 1000 + (_d * 1000 * cos(np.radians(_alpha)))
-            yy = extra_points[_top_border[i]][1] * 1000 + (_d * 1000 * sin(np.radians(_alpha)))
+            xx = points_dict[_top_border[i]][0] * 1000 + (_d * 1000 * cos(np.radians(_alpha)))
+            yy = points_dict[_top_border[i]][1] * 1000 + (_d * 1000 * sin(np.radians(_alpha)))
             _autobahn.append((xx, yy))
 
         for i in range(len(_autobahn) - 1):
@@ -346,25 +351,25 @@ def main() -> None:
         # Текст пашни
         add_layer(get_next_layer_id(), 3, "Текст пашни")
 
-        add_text("Пашня", *m_to_mm(sum_tuple(extra_points["111"][:2], (-20, 45))), 0, 7)
+        add_text("Пашня", *m_to_mm(sum_tuple(points_dict["111"][:2], (-20, 45))), 0, 7)
 
         # Текст лес
         add_layer(get_next_layer_id(), 3, "Текст лес")
 
-        add_text("Лес", *m_to_mm(sum_tuple(extra_points["6"][:2], (-60, 0))), 0, 7)
+        add_text("Лес", *m_to_mm(sum_tuple(points_dict["6"][:2], (-60, 0))), 0, 7)
 
         # Фруктовый сад
         add_layer(get_next_layer_id(), 3, "Колодец")
 
-        _alpha_14_15 = np.rad2deg(get_angle_between_points(*extra_points["14"][:2], *extra_points["15"][:2]))
-        _alpha_113_P42 = np.rad2deg(get_angle_between_points(*extra_points["113"][:2], *extra_points["ПЗ42"][:2]))
+        _alpha_14_15 = np.rad2deg(get_angle_between_points(*points_dict["14"][:2], *points_dict["15"][:2]))
+        _alpha_113_P42 = np.rad2deg(get_angle_between_points(*points_dict["113"][:2], *points_dict["ПЗ42"][:2]))
 
         # _well_angles = degrees(atan2(14.62,9.15))
         #
-        _well_point_1 = m_to_mm(endpoint_by_distance_and_angle(extra_points["113"][:2], 40, _alpha_113_P42))
+        _well_point_1 = m_to_mm(endpoint_by_distance_and_angle(points_dict["113"][:2], 40, _alpha_113_P42))
         # _obj_well_point_1 = iDocument2D.ksPoint(*_well_point_1, 0)
 
-        _well_point_2 = m_to_mm(endpoint_by_distance_and_angle(extra_points["113"][:2], 58.61, _alpha_113_P42))
+        _well_point_2 = m_to_mm(endpoint_by_distance_and_angle(points_dict["113"][:2], 58.61, _alpha_113_P42))
         # _obj_well_point_2 = iDocument2D.ksPoint(*_well_point_2, 0)
         #
         # well_line_1 = iDocument2D.ksLineSeg(*_well_point_1, *m_to_mm(endpoint_by_distance_and_angle(mm_to_m(
@@ -389,12 +394,12 @@ def main() -> None:
         # extra_points["113"][:2], 133.41, _alpha_113_P42), -7.81, _alpha_14_15), endpoint_by_distance_and_angle(
         # extra_points["ПЗ42"][:2], 96.15, 0 - _alpha_113_P42 - (25 + (11/60)))]
 
-        fruit_garden_points = [tuple(extra_points["17"][:2]), endpoint_by_distance_and_angle(
-            endpoint_by_distance_and_angle(extra_points["113"][:2], 58.61, _alpha_113_P42), -8.2, _alpha_14_15),
+        fruit_garden_points = [tuple(points_dict["17"][:2]), endpoint_by_distance_and_angle(
+            endpoint_by_distance_and_angle(points_dict["113"][:2], 58.61, _alpha_113_P42), -8.2, _alpha_14_15),
                                endpoint_by_distance_and_angle(
-                                   endpoint_by_distance_and_angle(extra_points["113"][:2], 133.41, _alpha_113_P42),
+                                   endpoint_by_distance_and_angle(points_dict["113"][:2], 133.41, _alpha_113_P42),
                                    -7.81,
-                                   _alpha_14_15), tuple(extra_points["23"][:2])]
+                                   _alpha_14_15), tuple(points_dict["23"][:2])]
 
         iDocument2D.ksLineSeg(*m_to_mm(fruit_garden_points[0]), *m_to_mm(fruit_garden_points[3]), 1)
         for i in range(len(fruit_garden_points) - 1):
@@ -413,11 +418,11 @@ def main() -> None:
 
         _kg2_p1 = m_to_mm(
             endpoint_by_distance_and_angle(
-                endpoint_by_distance_and_angle(extra_points["113"][:2], 80.05, _alpha_113_P42),
+                endpoint_by_distance_and_angle(points_dict["113"][:2], 80.05, _alpha_113_P42),
                 -8.03, _alpha_14_15))
         _kg2_p2 = m_to_mm(
             endpoint_by_distance_and_angle(
-                endpoint_by_distance_and_angle(extra_points["113"][:2], 110.23, _alpha_113_P42),
+                endpoint_by_distance_and_angle(points_dict["113"][:2], 110.23, _alpha_113_P42),
                 -7.91, _alpha_14_15))
 
         add_rect(_kg2_p1, -16.05 * 1000, (110.23 - 80.05) * 1000, _alpha_fs)
@@ -430,9 +435,9 @@ def main() -> None:
         # Железная дорога
         add_layer(get_next_layer_id(), 3, "Железная дорога")
 
-        _railroad_p1 = endpoint_by_distance_and_angle(extra_points["113"][:2], 12.64, _alpha_14_15)
+        _railroad_p1 = endpoint_by_distance_and_angle(points_dict["113"][:2], 12.64, _alpha_14_15)
         _railroad_end = endpoint_by_distance_and_angle(
-            endpoint_by_distance_and_angle(extra_points["113"][:2], 162.1, _alpha_113_P42), 14.28, _alpha_14_15)
+            endpoint_by_distance_and_angle(points_dict["113"][:2], 162.1, _alpha_113_P42), 14.28, _alpha_14_15)
 
         _alpha_rail = np.rad2deg(get_angle_between_points(*_railroad_p1, *_railroad_end))
 
@@ -448,24 +453,24 @@ def main() -> None:
 
         # Условные обозначения леса, луга, фруктового сада.
 
-        _plan_poly = [m_to_mm(tuple(extra_points["20"][:2])), m_to_mm(tuple(extra_points["21"][:2])),
-                      m_to_mm(tuple(extra_points["2"][:2])),
-                      m_to_mm(tuple(extra_points["4"][:2])), m_to_mm(tuple(extra_points["5"][:2])),
-                      m_to_mm(tuple(extra_points["6"][:2])),
-                      m_to_mm(tuple(extra_points["7"][:2])), m_to_mm(tuple(extra_points["8"][:2])),
-                      m_to_mm(tuple(extra_points["10"][:2])),
-                      m_to_mm(tuple(extra_points["14"][:2])), m_to_mm(tuple(extra_points["15"][:2])),
-                      m_to_mm(tuple(extra_points["113"][:2])),
-                      m_to_mm(tuple(extra_points["ПЗ42"][:2]))]
+        _plan_poly = [m_to_mm(tuple(points_dict["20"][:2])), m_to_mm(tuple(points_dict["21"][:2])),
+                      m_to_mm(tuple(points_dict["2"][:2])),
+                      m_to_mm(tuple(points_dict["4"][:2])), m_to_mm(tuple(points_dict["5"][:2])),
+                      m_to_mm(tuple(points_dict["6"][:2])),
+                      m_to_mm(tuple(points_dict["7"][:2])), m_to_mm(tuple(points_dict["8"][:2])),
+                      m_to_mm(tuple(points_dict["10"][:2])),
+                      m_to_mm(tuple(points_dict["14"][:2])), m_to_mm(tuple(points_dict["15"][:2])),
+                      m_to_mm(tuple(points_dict["113"][:2])),
+                      m_to_mm(tuple(points_dict["ПЗ42"][:2]))]
 
         _plan_poly_line = geometry.LineString(_plan_poly)
         _plan_poly = geometry.Polygon(_plan_poly_line)
 
-        _farm_poly = [m_to_mm(tuple(extra_points["ПЗ41"][:2])), m_to_mm(tuple(extra_points["5"][:2])),
-                      m_to_mm(tuple(extra_points["6"][:2])),
-                      m_to_mm(tuple(extra_points["7"][:2])), m_to_mm(tuple(extra_points["8"][:2])),
-                      m_to_mm(tuple(extra_points["112"][:2])),
-                      m_to_mm(tuple(extra_points["9"][:2]))]
+        _farm_poly = [m_to_mm(tuple(points_dict["ПЗ41"][:2])), m_to_mm(tuple(points_dict["5"][:2])),
+                      m_to_mm(tuple(points_dict["6"][:2])),
+                      m_to_mm(tuple(points_dict["7"][:2])), m_to_mm(tuple(points_dict["8"][:2])),
+                      m_to_mm(tuple(points_dict["112"][:2])),
+                      m_to_mm(tuple(points_dict["9"][:2]))]
 
         _farm_poly_line = geometry.LineString(_farm_poly)
         _farm_poly = geometry.Polygon(_farm_poly_line)
@@ -476,10 +481,10 @@ def main() -> None:
 
         _kg_poly = [_kg2_p1, m_to_mm(
             endpoint_by_distance_and_angle(
-                endpoint_by_distance_and_angle(extra_points["113"][:2], 80.05, _alpha_113_P42),
+                endpoint_by_distance_and_angle(points_dict["113"][:2], 80.05, _alpha_113_P42),
                 -8.03 - 16.05, _alpha_14_15)), m_to_mm(
             endpoint_by_distance_and_angle(
-                endpoint_by_distance_and_angle(extra_points["113"][:2], 110.23, _alpha_113_P42),
+                endpoint_by_distance_and_angle(points_dict["113"][:2], 110.23, _alpha_113_P42),
                 -7.91 - 16.05, _alpha_14_15)), _kg2_p2]
 
         _kg_poly_line = geometry.LineString(_kg_poly)
@@ -487,8 +492,8 @@ def main() -> None:
 
         add_layer(get_next_layer_id(), 0, "Условные обозначения луга")
 
-        for i in range(int(extra_points["20"][1] - int(extra_points["20"][1]) % 5), int(extra_points["7"][1]), 20):
-            for b in range(int(extra_points["4"][0] - int(extra_points["4"][1]) % 5), int(extra_points["15"][0]), 20):
+        for i in range(int(points_dict["20"][1] - int(points_dict["20"][1]) % 5), int(points_dict["7"][1]), 20):
+            for b in range(int(points_dict["4"][0] - int(points_dict["4"][1]) % 5), int(points_dict["15"][0]), 20):
                 _d_point = geometry.Point(m_to_mm((b, i)))
                 if _plan_poly.contains(_d_point) and \
                         not _farm_poly.contains(_d_point) and \
@@ -505,8 +510,8 @@ def main() -> None:
 
         add_layer(get_next_layer_id(), 0, "Условные обозначения леса")
 
-        for i in range(int(extra_points["4"][1] - int(extra_points["4"][1]) % 5), int(extra_points["7"][1]), 20):
-            for b in range(int(extra_points["3"][0] - int(extra_points["3"][1]) % 5), int(extra_points["7"][0]), 20):
+        for i in range(int(points_dict["4"][1] - int(points_dict["4"][1]) % 5), int(points_dict["7"][1]), 20):
+            for b in range(int(points_dict["3"][0] - int(points_dict["3"][1]) % 5), int(points_dict["7"][0]), 20):
                 _d_point = geometry.Point(m_to_mm((b, i)))
                 if not _plan_poly.contains(_d_point):
                     iDocument2D.ksCircle(*m_to_mm((b, i)), 2500, 2)
@@ -515,18 +520,18 @@ def main() -> None:
         add_layer(get_next_layer_id(), 0, "Дерево")
 
         _a1 = radians(49 + 15 / 60)
-        _a2 = radians(f_angle(f_slope(*extra_points["113"][:2], *extra_points["112"][:2]),
-                              f_slope(*extra_points["ПЗ42"][:2], *extra_points["113"][:2])) - (55 + 6 / 60))
+        _a2 = radians(f_angle(f_slope(*points_dict["113"][:2], *points_dict["112"][:2]),
+                              f_slope(*points_dict["ПЗ42"][:2], *points_dict["113"][:2])) - (55 + 6 / 60))
 
-        s = line_len(extra_points["113"][:2], extra_points["112"][:2])
+        s = line_len(points_dict["113"][:2], points_dict["112"][:2])
 
         _a3 = pi - _a2 - _a1
 
         _l1 = (s / sin(_a3)) * sin(_a1)
         _l2 = (s / sin(_a3)) * sin(_a2)
 
-        _tree = endpoint_by_distance_and_angle(extra_points["113"][:2], _l1, degrees(_a2) + np.rad2deg(
-            get_angle_between_points(*extra_points["113"][:2], *extra_points["112"][:2])))
+        _tree = endpoint_by_distance_and_angle(points_dict["113"][:2], _l1, degrees(_a2) + np.rad2deg(
+            get_angle_between_points(*points_dict["113"][:2], *points_dict["112"][:2])))
 
         _tree_point = iDocument2D.ksPoint(*m_to_mm(_tree), 0)
 
@@ -537,8 +542,8 @@ def main() -> None:
 
         _padding = 30
 
-        _top_left_frame_corner = m_to_mm((extra_points["3"][0] - _padding, extra_points["7"][1] + _padding))
-        _bottom_right_frame_corner = m_to_mm((extra_points["15"][0] + _padding, extra_points["19"][1] - _padding))
+        _top_left_frame_corner = m_to_mm((points_dict["3"][0] - _padding, points_dict["7"][1] + _padding))
+        _bottom_right_frame_corner = m_to_mm((points_dict["15"][0] + _padding, points_dict["19"][1] - _padding))
 
         _wh_dif = (-1 * (_top_left_frame_corner[1] - _bottom_right_frame_corner[1]),
                    -1 * (_top_left_frame_corner[0] - _bottom_right_frame_corner[0]))
@@ -551,8 +556,8 @@ def main() -> None:
         add_rect(_top_left_frame_corner, *_wh_dif)
 
         _padding += _padding
-        _top_left_frame_corner = m_to_mm((extra_points["3"][0] - _padding, extra_points["7"][1] + _padding))
-        _bottom_right_frame_corner = m_to_mm((extra_points["15"][0] + _padding, extra_points["19"][1] - _padding))
+        _top_left_frame_corner = m_to_mm((points_dict["3"][0] - _padding, points_dict["7"][1] + _padding))
+        _bottom_right_frame_corner = m_to_mm((points_dict["15"][0] + _padding, points_dict["19"][1] - _padding))
 
         _wh_dif = (-1 * (_top_left_frame_corner[1] - _bottom_right_frame_corner[1]),
                    -1 * (_top_left_frame_corner[0] - _bottom_right_frame_corner[0]))
@@ -561,7 +566,7 @@ def main() -> None:
 
         add_rect(_top_left_frame_corner, *_wh_dif)
 
-        _main_points = [tuple(int(i // 100) / 10 for i in extra_points[point][:2]) for point in
+        _main_points = [tuple(int(i // 100) / 10 for i in points_dict[point][:2]) for point in
                         "ПЗ41,111,112,113,ПЗ42".split(sep=",")]
 
         _min_x = min(_main_points, key=lambda x: x[0])[0]
@@ -592,7 +597,7 @@ def main() -> None:
 
         if Path('../../../Watermark.png').exists():
             # Добавить картинку
-            add_raster('../../../Watermark.png', (extra_points["3"][0] / 2, extra_points["20"][1] / 2), 0.4)
+            add_raster('../../../Watermark.png', (points_dict["3"][0] / 2, points_dict["20"][1] / 2), 0.4)
 
         kompas_document.SaveAs(str(Path(f'../{_variant}.pdf').absolute()))
 
