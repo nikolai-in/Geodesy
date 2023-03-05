@@ -61,19 +61,37 @@ def add_point_marker(point_name: str, point_cords: tuple[float, float], point_he
 
 
 def main() -> None:
-    for _variant in range(24, 25):
+    for _variant in range(22, 23):
         change_variant(_variant, workbook_path=WORKBOOK_PATH)
 
         add_view("План", 1 / ONE_TO_SCALE)
-        add_layer(get_next_layer_id(), 3, "Основные Точки")
-
         points_dict = get_points_dict(WORKBOOK_PATH)
 
+        # Создаю полигон плана для нахождения центра
+        _plan_poly = [m_to_mm(tuple(points_dict["20"][:2])), m_to_mm(tuple(points_dict["21"][:2])),
+                      m_to_mm(tuple(points_dict["2"][:2])),
+                      m_to_mm(tuple(points_dict["4"][:2])), m_to_mm(tuple(points_dict["5"][:2])),
+                      m_to_mm(tuple(points_dict["6"][:2])),
+                      m_to_mm(tuple(points_dict["7"][:2])), m_to_mm(tuple(points_dict["8"][:2])),
+                      m_to_mm(tuple(points_dict["10"][:2])),
+                      m_to_mm(tuple(points_dict["14"][:2])), m_to_mm(tuple(points_dict["15"][:2])),
+                      m_to_mm(tuple(points_dict["113"][:2])),
+                      m_to_mm(tuple(points_dict["ПЗ42"][:2]))]
+
+        _plan_poly_line = geometry.LineString(_plan_poly)
+        _plan_poly = geometry.Polygon(_plan_poly_line)
+
+        # Перемещаю план в центр листа
+        current_view = kompas_document_2d.ViewsAndLayersManager.Views.ActiveView
+        current_view.X = 594 / 2 - _plan_poly.centroid.x / 2000
+        current_view.Y = 420 / 2 - _plan_poly.centroid.y / 2000
+        current_view.Update()
+
+        add_layer(get_next_layer_id(), 3, "Основные Точки")
         for point in (main_points_names := ["ПЗ41", "111", "112", "113", "ПЗ42"]):
             add_point_marker(point, m_to_mm(points_dict[point][:2]), points_dict[point][2] * 1000)
 
         add_layer(get_next_layer_id(), 3, "Побочные Точки")
-
         for point in points_dict:
             if point not in main_points_names:
                 add_point_marker(point, m_to_mm(points_dict[point][:2]), points_dict[point][2] * 1000)
@@ -123,10 +141,7 @@ def main() -> None:
         centroid = (sum(x) / len(points_dict), sum(y) / len(points_dict))
         iDocument2D.ksPoint(*(cord * 1000 for cord in centroid), 0)
 
-        current_view = kompas_document_2d.ViewsAndLayersManager.Views.ActiveView
-        current_view.X = 594 / 2 - centroid[0] / 2
-        current_view.Y = 420 / 2 - centroid[1] / 2
-        current_view.Update()
+
 
         interpolate_line("7", "8", interpolated_points, points_dict)
 
@@ -452,19 +467,6 @@ def main() -> None:
             iDocument2D.ksLineSeg(*m_to_mm(_side_point_1), *m_to_mm(_side_point_2), 1)
 
         # Условные обозначения леса, луга, фруктового сада.
-
-        _plan_poly = [m_to_mm(tuple(points_dict["20"][:2])), m_to_mm(tuple(points_dict["21"][:2])),
-                      m_to_mm(tuple(points_dict["2"][:2])),
-                      m_to_mm(tuple(points_dict["4"][:2])), m_to_mm(tuple(points_dict["5"][:2])),
-                      m_to_mm(tuple(points_dict["6"][:2])),
-                      m_to_mm(tuple(points_dict["7"][:2])), m_to_mm(tuple(points_dict["8"][:2])),
-                      m_to_mm(tuple(points_dict["10"][:2])),
-                      m_to_mm(tuple(points_dict["14"][:2])), m_to_mm(tuple(points_dict["15"][:2])),
-                      m_to_mm(tuple(points_dict["113"][:2])),
-                      m_to_mm(tuple(points_dict["ПЗ42"][:2]))]
-
-        _plan_poly_line = geometry.LineString(_plan_poly)
-        _plan_poly = geometry.Polygon(_plan_poly_line)
 
         _farm_poly = [m_to_mm(tuple(points_dict["ПЗ41"][:2])), m_to_mm(tuple(points_dict["5"][:2])),
                       m_to_mm(tuple(points_dict["6"][:2])),
