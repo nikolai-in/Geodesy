@@ -11,7 +11,7 @@ from utils.utils import change_variant, add_view, add_layer, add_text, add_rect,
     interpolate_line, sum_tuple, get_intersections, line_len, draw_meadow, f_angle, f_slope, get_next_layer_id
 
 ONE_TO_SCALE = 2000
-WORKBOOK_PATH = Path("../../Геодезия.xlsm").absolute()
+WORKBOOK_PATH = Path("../../GeoPlanV2.xlsm").absolute()
 
 
 def get_points_dict(workbook_path: Path) -> dict:
