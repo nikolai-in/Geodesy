@@ -1,29 +1,36 @@
 from math import *
 from pathlib import Path
+import sys
 from typing import List, Tuple
 from typing import Union
 
-import LDefin2D  # Компас-3д
-import MiscellaneousHelpers as miscHelpers  # Компас-3д
 import numpy as np
 import pythoncom  # Компас-3д
 import xlwings as xw
 from scipy import interpolate
 from win32com.client import Dispatch, gencache  # Компас-3д
 
+sys.path.append(
+    "C:\\ProgramData\\ASCON\\KOMPAS-3D\\21\\"
+    + "Python 3\\App\\Lib\\site-packages\\pythonwin"
+)
+
+import LDefin2D  # noqa: F401, E402 # type: ignore
+import MiscellaneousHelpers as miscHelpers  # noqa: F401, E402 # type: ignore
+
 #  Подключим константы API Компас
-kompas6_constants = gencache.EnsureModule("{75C9F5D0-B5B8-4526-8681-9903C567D2ED}", 0, 1, 0).constants
-kompas6_constants_3d = gencache.EnsureModule("{2CAF168C-7961-4B90-9DA2-701419BEEFE3}", 0, 1, 0).constants
+kompas6_constants = gencache.EnsureModule("{75C9F5D0-B5B8-4526-8681-9903C567D2ED}", 0, 1, 0).constants # type: ignore
+kompas6_constants_3d = gencache.EnsureModule("{2CAF168C-7961-4B90-9DA2-701419BEEFE3}", 0, 1, 0).constants # type: ignore
 
 #  Подключим описание интерфейсов API5
-kompas6_api5_module = gencache.EnsureModule("{0422828C-F174-495E-AC5D-D31014DBBE87}", 0, 1, 0)
+kompas6_api5_module = gencache.EnsureModule("{0422828C-F174-495E-AC5D-D31014DBBE87}", 0, 1, 0) # type: ignore
 kompas_object = kompas6_api5_module.KompasObject(
     Dispatch("Kompas.Application.5")._oleobj_.QueryInterface(kompas6_api5_module.KompasObject.CLSID,
                                                              pythoncom.IID_IDispatch))
 miscHelpers.iKompasObject = kompas_object
 
 #  Подключим описание интерфейсов API7
-kompas_api7_module = gencache.EnsureModule("{69AC2981-37C0-4379-84FD-5DD2F3C0A520}", 0, 1, 0)
+kompas_api7_module = gencache.EnsureModule("{69AC2981-37C0-4379-84FD-5DD2F3C0A520}", 0, 1, 0) # type: ignore
 application = kompas_api7_module.IApplication(
     Dispatch("Kompas.Application.7")._oleobj_.QueryInterface(kompas_api7_module.IApplication.CLSID,
                                                              pythoncom.IID_IDispatch))
