@@ -93,13 +93,13 @@ def add_point_marker(
 ):
     iDocument2D.ksCircle(*point_cords, radius, 1)
     add_text(
-        f'{point_name} ({str("{:1.2f}".format(point_height)).replace(".", ",")})',
+        f'{point_name} ({str("{:1.2f}".format(point_height/1000)).replace(".", ",")})',
         *map(lambda i, j: (i - j), point_cords, offset),
     )
 
 
 def main() -> None:
-    for _variant in range(22, 23):
+    for _variant in range(27, 28):
         change_variant(_variant, workbook_path=WORKBOOK_PATH)
 
         add_view("План", 1 / ONE_TO_SCALE)
