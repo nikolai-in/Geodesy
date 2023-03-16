@@ -6,7 +6,7 @@ import pandas as pd
 from scipy import interpolate
 from shapely import geometry, affinity
 
-from utils.utils import (
+from utils import (
     change_variant,
     add_view,
     add_layer,
@@ -99,7 +99,7 @@ def add_point_marker(
 
 
 def main() -> None:
-    for _variant in range(27, 28):
+    for _variant in range(22, 23):
         change_variant(_variant, workbook_path=WORKBOOK_PATH)
 
         add_view("План", 1 / ONE_TO_SCALE)
@@ -309,32 +309,35 @@ def main() -> None:
 
         interpolated_points_behind_fruit_garden = {}
 
-        _interpolation_112_10 = interpolate_line("112", "10", {}, points_dict)
-        _last_point_between_112_10 = list(_interpolation_112_10.keys())[-1]
+        try:
+            _interpolation_112_10 = interpolate_line("112", "10", {}, points_dict)
+            _last_point_between_112_10 = list(_interpolation_112_10.keys())[-1]
 
-        interpolated_points_behind_fruit_garden.update(
-            {
-                _last_point_between_112_10: _interpolation_112_10[
-                    _last_point_between_112_10
-                ]
-            }
-        )
-
-        _interpolation_14_17 = interpolate_line("14", "17", {}, points_dict)
-        interpolated_points_behind_fruit_garden[_last_point_between_112_10].append(
-            *_interpolation_14_17[_last_point_between_112_10]
-        )
-
-        _interpolation_15_113 = interpolate_line("15", "113", {}, points_dict)
-        if _last_point_between_112_10 in _interpolation_15_113:
-            interpolated_points_behind_fruit_garden[_last_point_between_112_10].append(
-                *_interpolation_15_113[_last_point_between_112_10]
+            interpolated_points_behind_fruit_garden.update(
+                {
+                    _last_point_between_112_10: _interpolation_112_10[
+                        _last_point_between_112_10
+                    ]
+                }
             )
 
-        _interpolation_8_10 = interpolate_line("8", "10", {}, points_dict)
-        interpolated_points_behind_fruit_garden[_last_point_between_112_10].insert(
-            0, *_interpolation_8_10[_last_point_between_112_10]
-        )
+            _interpolation_14_17 = interpolate_line("14", "17", {}, points_dict)
+            interpolated_points_behind_fruit_garden[_last_point_between_112_10].append(
+                *_interpolation_14_17[_last_point_between_112_10]
+            )
+
+            _interpolation_15_113 = interpolate_line("15", "113", {}, points_dict)
+            if _last_point_between_112_10 in _interpolation_15_113:
+                interpolated_points_behind_fruit_garden[
+                    _last_point_between_112_10
+                ].append(*_interpolation_15_113[_last_point_between_112_10])
+
+            _interpolation_8_10 = interpolate_line("8", "10", {}, points_dict)
+            interpolated_points_behind_fruit_garden[_last_point_between_112_10].insert(
+                0, *_interpolation_8_10[_last_point_between_112_10]
+            )
+        except KeyError:
+            pass
 
         add_layer(get_next_layer_id(), 3, "Кривые интерполяции за ФС")
 
